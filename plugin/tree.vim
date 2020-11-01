@@ -1,1 +1,1 @@
-command! Tree tree#open()
+command! Tree call tree#open()
