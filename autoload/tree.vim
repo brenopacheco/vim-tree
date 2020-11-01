@@ -1,14 +1,17 @@
+" TODO: syntax highlight
 " TODO: go down has to be fixed (use realpath)
-" TODO: foldexpr not working
 " TODO: edit,split,etc,etc
 " TODO: next, prev
 " TODO: link help to mappings
+"
 
+
+let s:line     = 0
+let s:col      = 0
 let s:dir      = getcwd()
 let s:level    = 1
 let s:cmd      = 'tree'
-let s:options = '-F -C --dirsfirst'
-let s:regex    = '[^ │─├└]'
+let s:options = '-F --dirsfirst'
 let s:maps     = {
       \ '?': 'tree#help()',
       \ 'l': 'tree#expand()',
@@ -37,57 +40,57 @@ function! tree#open(dir) abort
   call s:open()
 endfunction
 
-function tree#close() abort
+function! tree#close() abort
   call s:close()
 endfunction
 
-function tree#up() abort
+function! tree#up() abort
   let s:dir = system('dirname ' . s:dir)
   call s:close()
   call s:open()
 endfunction
 
-function tree#down() abort
+function! tree#down() abort
   let path = tree#path()
   let s:dir = system('dirname ' . path . '_')
   call s:close()
   call s:open()
 endfunction
 
-function tree#expand() abort
+function! tree#expand() abort
   call s:close()
   let s:level = s:level + 1
   call s:open()
 endfunction
 
-function tree#contract() abort
+function! tree#contract() abort
   call s:close()
   let s:level = s:level > 1 ? s:level - 1 : 1
   call s:open()
 endfunction
 
-function tree#edit() abort
+function! tree#edit() abort
 endfunction
 
-function tree#vsplit() abort
+function! tree#vsplit() abort
 endfunction
 
-function tree#split() abort
+function! tree#split() abort
 endfunction
 
-function tree#tabedit() abort
+function! tree#tabedit() abort
 endfunction
 
-function tree#insert() abort
+function! tree#insert() abort
 endfunction
 
-function tree#change() abort
+function! tree#change() abort
 endfunction
 
-function tree#next() abort
+function! tree#next() abort
 endfunction
 
-function tree#prev() abort
+function! tree#prev() abort
 endfunction
 
 function! tree#help() abort
@@ -108,32 +111,6 @@ function! tree#help() abort
 endfunction
 
 
-function s:open() abort
-  let treecmd = s:cmd . ' ' . s:options 
-        \ . ' -L ' . s:level . ' ' . s:dir
-  call termopen(treecmd, {'on_exit': {j,d,e -> s:check()}})
-  set ft=vimtree
-  set foldmethod=expr
-  set foldexpr=tree#foldlevel(v:lnum)
-  setlocal bufhidden=wipe nowrap foldcolumn=0
-  autocmd CursorMoved <buffer> call s:cursormoved()
-  for key  in keys(s:maps)
-    exec 'noremap <silent><buffer><nowait> ' 
-          \ .key . ' :call ' . s:maps[key] . '<CR>'
-  endfor
-endfunction
-
-function s:close() abort
-  bd!
-endfunction
-
-function! tree#foldlevel(lnum)
-  let line = getline(a:lnum)
-  return line =~ '/$'
-        \ ? '>'.(strwidth(matchstr(line, '.\{-}\ze'.s:regex)) / 4)
-        \ : '='
-endfunction
-
 function! tree#path() abort
   let path = ''
   let line = line('.')
@@ -141,7 +118,7 @@ function! tree#path() abort
   let col = len(getline('.'))
   call setpos('.', [0, line, col, 0])
   while line > 1
-    let c = match(getline(line), ' \zs'.s:regex)
+    let c = match(getline(line), ' \zs[^ │─├└]')
     if c < col
       let part = matchstr(getline(line)[c:], '.*')
       " Handle symlinks.
@@ -155,14 +132,74 @@ function! tree#path() abort
   return path
 endfunction
 
-function! s:cursormoved() abort
-  echo tree#path()
+function! tree#foldlevel(lnum)
+    if a:lnum == 1
+      return 0
+    endif
+    let w0 = tree#foldwidth(a:lnum)
+    let w1 = tree#foldwidth(a:lnum+1)
+    let diff = w1 - w0
+    if diff > 0
+      return "a" . diff
+    elseif diff < 0
+      return "s" . -diff
+    else 
+      return "="
+    endif
+endfunction
+
+function! tree#foldwidth(lnum)
+	let line = getline(a:lnum)
+	let filtered = substitute(line, '[│ ├└]', ' ', 'g')
+    return (match(filtered, '─') + 3) / 4
+endfunction
+
+function! tree#foldtext()
+  let line = getline(v:foldstart)
+  let sub = substitute(line, '/\*\|\*/\|{{{\d\=', '', 'g')
+  let lines = v:foldend-v:foldstart + 1
+  let text = line . ' # '.lines.' lines'
+  return text
+endfunction
+
+function! tree#info() abort
+  let info = 
+        \ 'path:   ' . tree#path()
+        \ . "\t" . 'tlevel: ' . tree#foldlevel(line('.'))
+        \ . "\t" . 'level:  ' . foldlevel(line('.'))
+        \ . "\t" . 'width:  ' . tree#foldwidth(line('.'))
+  return info
 endfunction
 
 
-function! s:check() abort
-  if empty(getline(1))
-    call s:close()
-    call s:open()
-  endif
+function! s:open() abort
+  let treecmd = s:cmd . ' ' . s:options 
+        \ . ' -L ' . s:level . ' ' . s:dir
+  let buffer = bufadd('__vimtree___')
+  exec 'norm ' . buffer . 'b'
+  call append(0, systemlist(treecmd))
+  call setpos('.', [0, s:line, s:col, 0])
+  for key  in keys(s:maps)
+    exec 'noremap <silent><buffer><nowait> ' 
+          \ .key . ' :call ' . s:maps[key] . '<CR>'
+  endfor
+  set ft=vimtree
 endfunction
+
+function! s:close() abort
+  let pos = getpos('.')
+  let line = pos[1]
+  let col = pos[2]
+  bd!
+endfunction
+
+augroup vimtree
+  au!
+  au Filetype vimtree set foldmethod=expr
+  au Filetype vimtree set foldexpr=tree#foldlevel(v:lnum)
+  au Filetype vimtree set foldtext=tree#foldtext()
+  au Filetype vimtree setlocal fillchars=fold:\ 
+  au Filetype vimtree setlocal bufhidden=wipe nowrap foldcolumn=0
+  au Filetype vimtree au CursorMoved <buffer> :echo tree#info()
+augroup END
+
