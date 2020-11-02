@@ -11,10 +11,6 @@
 " the tree, go down into a specific directory or open/create/rename
 " a file. Some mappings are probided by default.
 
-""
-" @section Configuration, config
-" @plugin(vim-tree) is not yet very configurable, unfortunately.
-
 " ==============================================================================
 " Variables
 
@@ -29,48 +25,46 @@ let s:options = '-F --dirsfirst'
 " Mappings
 
 ""
-" @section Mappings, mappings
+" @section Configuration, config
+" The plugin is not yet very configurable, unfortunately.
 " You can define what keys will be mapped whenever a vim-tree buffer
 " is created using the @setting(g:vimtree_mappings)
 
 ""
-" Mappings for vim-tree buffer. Follows the the structure:
-" [
-"   {'key': 'q', 'cmd': '...', 'desc': '...'},
-"   ...
-" ]
-" Try echoing the default value of @setting(g:vimtree_mappings)
-" to show the default available commands.
+" Mappings for vim-tree buffer.
+" Default: @setting(s:default_mappings)
 let g:vimtree_mappings =
-      \ exists('g:vimtree_mappings') ?
-      \ g:vimtree_mappings :
-      \ [
-      \   { 'key': '?', 'cmd': 'tree#help()',     'desc': 'show help' },
-      \   { 'key': 'l', 'cmd': 'tree#expand()',   'desc': 'expand'    },
-      \   { 'key': 'h', 'cmd': 'tree#contract()', 'desc': 'contract'  },
-      \   { 'key': '-', 'cmd': 'tree#up()',       'desc': 'go up'     },
-      \   { 'key': '+', 'cmd': 'tree#down()',     'desc': 'go down'   },
-      \   { 'key': 'q', 'cmd': 'tree#close()',    'desc': 'close'     },
-      \   { 'key': 'e', 'cmd': 'tree#edit()',     'desc': 'edit'      },
-      \   { 'key': 'v', 'cmd': 'tree#vsplit()',   'desc': 'vsplit'    },
-      \   { 'key': 's', 'cmd': 'tree#split()',    'desc': 'split'     },
-      \   { 'key': 't', 'cmd': 'tree#tabedit()',  'desc': 'tabnew'    },
-      \   { 'key': 'i', 'cmd': 'tree#insert()',   'desc': 'insert'    },
-      \   { 'key': 'r', 'cmd': 'tree#rename()',   'desc': 'rename'    },
-      \   { 'key': ']', 'cmd': 'tree#next()',     'desc': 'next fold' },
-      \   { 'key': '[', 'cmd': 'tree#prev()',     'desc': 'prev fold' }
-      \ ]
+   \ [
+   \   { 'key': '?', 'cmd': 'tree#help()',     'desc': 'show help' },
+   \   { 'key': 'l', 'cmd': 'tree#expand()',   'desc': 'expand'    },
+   \   { 'key': 'h', 'cmd': 'tree#contract()', 'desc': 'contract'  },
+   \   { 'key': '-', 'cmd': 'tree#up()',       'desc': 'go up'     },
+   \   { 'key': '+', 'cmd': 'tree#down()',     'desc': 'go down'   },
+   \   { 'key': 'q', 'cmd': 'tree#close()',    'desc': 'close'     },
+   \   { 'key': 'e', 'cmd': 'tree#edit()',     'desc': 'edit'      },
+   \   { 'key': 'v', 'cmd': 'tree#vsplit()',   'desc': 'vsplit'    },
+   \   { 'key': 's', 'cmd': 'tree#split()',    'desc': 'split'     },
+   \   { 'key': 't', 'cmd': 'tree#tabedit()',  'desc': 'tabnew'    },
+   \   { 'key': 'i', 'cmd': 'tree#insert()',   'desc': 'insert'    },
+   \   { 'key': 'r', 'cmd': 'tree#rename()',   'desc': 'rename'    },
+   \   { 'key': ']', 'cmd': 'tree#next()',     'desc': 'next fold' },
+   \   { 'key': '[', 'cmd': 'tree#prev()',     'desc': 'prev fold' }
+   \ ]
 
 " ==============================================================================
 " API
 
 ""
-" Opens vim-tree
-" [dir] optional directory
-" [dir] defaults to `getcwd()`
-function! tree#open(dir) abort
-  if !empty(a:dir)
-    let s:dir = a:dir
+" @section Functions, functions
+" Available functions for working with vim-tree and binding mappings
+
+""
+" @public
+" Opens vim-tree in [optional]
+" @default dir=`getcwd()`
+function! tree#open(...) abort
+  if a:0 > 0
+    let s:dir = a:0
   else
     let s:dir = getcwd()
   endif
@@ -82,12 +76,14 @@ function! tree#open(dir) abort
 endfunction
 
 ""
+" @public
 " Closes vim-tree
 function! tree#close() abort
   call s:close()
 endfunction
 
 ""
+" @public
 " Goes up one directory from root.
 function! tree#up() abort
   let s:dir = system('dirname ' . s:dir)
@@ -97,6 +93,7 @@ function! tree#up() abort
 endfunction
 
 ""
+" @public
 " Go down into directory under cursor.
 function! tree#down() abort
   let  s:dir = s:pathdir()
@@ -105,6 +102,7 @@ function! tree#down() abort
 endfunction
 
 ""
+" @public
 " Expand tree, increasing -L level in tree command.
 function! tree#expand() abort
   call s:close()
@@ -113,9 +111,8 @@ function! tree#expand() abort
 endfunction
 
 ""
+" @public
 " Contract tree, decreasing -L level in tree command.
-" {required} argument
-" [optional] argument
 function! tree#contract() abort
   call s:close()
   let s:level = s:level > 1 ? s:level - 1 : 1
@@ -123,6 +120,7 @@ function! tree#contract() abort
 endfunction
 
 ""
+" @public
 " Edit file under cursor, closing vim-tree.
 function! tree#edit() abort
   let path = tree#path()
@@ -131,6 +129,7 @@ function! tree#edit() abort
 endfunction
 
 ""
+" @public
 " Edit file under cursor in a vertical split.
 function! tree#vsplit() abort
   let path = tree#path()
@@ -138,6 +137,7 @@ function! tree#vsplit() abort
 endfunction
 
 ""
+" @public
 " Edit file under cursor in a horizontal split.
 function! tree#split() abort
   let path = tree#path()
@@ -145,6 +145,7 @@ function! tree#split() abort
 endfunction
 
 ""
+" @public
 " Edit file under cursor in a new tab.
 function! tree#tabedit() abort
   let path = tree#path()
@@ -152,6 +153,7 @@ function! tree#tabedit() abort
 endfunction
 
 ""
+" @public
 " Create (touch) new file in the directory under cursor.
 function! tree#insert() abort
   let dir = s:pathdir() . '/'
@@ -162,6 +164,7 @@ function! tree#insert() abort
 endfunction
 
 ""
+" @public
 " Rename file under cursor
 function! tree#rename() abort
   let dir = s:pathdir() . '/'
@@ -174,18 +177,21 @@ function! tree#rename() abort
 endfunction
 
 ""
+" @public
 " Jump to next fold
 function! tree#next() abort
   norm zj
 endfunction
 
 ""
+" @public
 " Jump to previous fold
 function! tree#prev() abort
   norm kzkj
 endfunction
 
 ""
+" @public
 " Shows help for mappings
 function! tree#help() abort
   for mapping in g:vimtree_mappings
@@ -194,6 +200,7 @@ function! tree#help() abort
 endfunction
 
 ""
+" @public
 " Returns the path for file/directory under cursor.
 function! tree#path() abort
   let path = ''
@@ -217,6 +224,7 @@ function! tree#path() abort
 endfunction
 
 ""
+" @public
 " Function used for defining fold level with `fold-expr`
 function! tree#foldlevel(lnum)
     if a:lnum == 1
@@ -236,6 +244,8 @@ function! tree#foldlevel(lnum)
     endif
 endfunction
 
+""
+" @public
 " function! tree#foldwidth(lnum)
 function! s:foldwidth(lnum)
 	let line = getline(a:lnum)
@@ -244,6 +254,7 @@ function! s:foldwidth(lnum)
 endfunction
 
 ""
+" @public
 " Function used to define fold text using `foldtext`
 function! tree#foldtext()
   let line = getline(v:foldstart)
@@ -253,6 +264,7 @@ function! tree#foldtext()
 endfunction
 
 ""
+" @public
 " Returns root directory being used by vim-tree
 function! tree#dir() abort
   return s:dir
