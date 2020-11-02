@@ -20,7 +20,7 @@ let s:dir      = getcwd()
 let s:level    = 1
 let s:cmd      = 'tree'
 let s:options = '-F --dirsfirst'
-
+let s:bufname =  "___vimtree___"
 " ==============================================================================
 " Mappings
 
@@ -87,8 +87,7 @@ endfunction
 function! tree#up() abort
   let s:dir = system('dirname ' . s:dir)
   let s:dir = substitute(s:dir, '\n', '', 'g')
-  call s:close()
-  call s:open()
+  call s:reopen()
 endfunction
 
 ""
@@ -96,26 +95,23 @@ endfunction
 " Go down into directory under cursor.
 function! tree#down() abort
   let  s:dir = s:pathdir()
-  call s:close()
-  call s:open()
+  call s:reopen()
 endfunction
 
 ""
 " @public
 " Expand tree, increasing -L level in tree command.
 function! tree#expand() abort
-  call s:close()
   let s:level = s:level + 1
-  call s:open()
+  call s:reopen()
 endfunction
 
 ""
 " @public
 " Contract tree, decreasing -L level in tree command.
 function! tree#contract() abort
-  call s:close()
   let s:level = s:level > 1 ? s:level - 1 : 1
-  call s:open()
+  call s:reopen()
 endfunction
 
 ""
@@ -123,8 +119,8 @@ endfunction
 " Edit file under cursor, closing vim-tree.
 function! tree#edit() abort
   let path = tree#path()
-  call s:close()
   exec 'e ' . path
+  call s:close()
 endfunction
 
 ""
@@ -158,8 +154,7 @@ function! tree#insert() abort
   let dir = s:pathdir() . '/'
   let fn = input('Filename: ' . dir)
   call system('touch ' . dir . fn)
-  call s:close()
-  call s:open()
+  call s:reopen()
 endfunction
 
 ""
@@ -171,8 +166,7 @@ function! tree#rename() abort
   let prompt = 'Rename: ' . path . ' -> '
   let fn = input({'prompt': prompt, 'default': path})
   call system('mv ' . path . ' ' . fn)
-  call s:close()
-  call s:open()
+  call s:reopen()
 endfunction
 
 ""
@@ -275,8 +269,8 @@ endfunction
 function! s:open() abort
   let treecmd = s:cmd . ' ' . s:options 
         \ . ' -L ' . s:level . ' ' . s:dir
-  let buffer = bufadd('__vimtree___')
-  exec 'norm ' . buffer . 'b'
+  call bufadd(s:bufname)
+  exec 'noautocmd e ' . s:bufname
   call append(0, systemlist(treecmd))
   call setpos('.', [0, s:line, s:col, 0])
   for mapping  in g:vimtree_mappings
@@ -287,10 +281,20 @@ function! s:open() abort
 endfunction
 
 function! s:close() abort
+  if bufexists(s:bufname) 
+       silent exec 'bw! ' . bufnr(s:bufname)
+  endif 
+endfunction
+
+
+function! s:reopen() abort
   let pos = getpos('.')
   let s:line = pos[1]
   let s:col = pos[2]
-  bd!
+  vsp 
+  enew
+  call s:close()
+  call s:open()
 endfunction
 
 function s:pathdir() abort
@@ -311,6 +315,7 @@ augroup vimtree
   au Filetype vimtree set foldexpr=tree#foldlevel(v:lnum)
   au Filetype vimtree set foldtext=tree#foldtext()
   au Filetype vimtree setlocal fillchars=fold:\ 
-  au Filetype vimtree setlocal bufhidden=wipe nowrap foldcolumn=0 readonly buflisted
+  au Filetype vimtree setlocal bufhidden=wipe nowrap 
+        \ readonly nobuflisted buftype=nofile
   " au Filetype vimtree au CursorMoved <buffer> :echo tree#info()
 augroup END
