@@ -10,4 +10,4 @@ let g:loaded_vimtree = 1
 ""
 " Opens up vim-tree in [directory]
 " @default directory=`getcwd()`
-command -nargs=? Tree call tree#open(<f-args>)
+command -complete=dir -nargs=? Tree call tree#open(<f-args>)

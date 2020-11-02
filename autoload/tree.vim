@@ -64,9 +64,8 @@ let g:vimtree_mappings =
 " @default dir=`getcwd()`
 function! tree#open(...) abort
   if a:0 > 0
-    let s:dir = a:0
-  else
-    let s:dir = getcwd()
+    let s:dir = system('realpath ' . a:1)
+    let s:dir = substitute(s:dir, '\n', '', 'g')
   endif
   if !&hidden && &modified
     echohl WarningMsg | echo 'There are unsaved changes.' | echohl NONE
