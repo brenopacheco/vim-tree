@@ -51,7 +51,8 @@ let g:vimtree_mappings =
    \   { 'key': 'r',  'cmd': 'tree#rename()',   'desc': 'rename'    },
    \   { 'key': '}',  'cmd': 'tree#next()',     'desc': 'next fold' },
    \   { 'key': '{',  'cmd': 'tree#prev()',     'desc': 'prev fold' },
-   \   { 'key': 'f',  'cmd': 'tree#find()',     'desc': 'find'    },
+   \   { 'key': '*',  'cmd': 'tree#grep()',     'desc': 'grep'    },
+   \   { 'key': 'f',  'cmd': 'tree#filter()',   'desc': 'filter'    },
    \   { 'key': 'zh', 'cmd': 'tree#hidden()',   'desc': 'prev fold' }
    \ ]
 
@@ -191,15 +192,16 @@ endfunction
 
 ""
 " @public
-" Apply filter and populate quickfix
-function! tree#find() abort
+" Grep pattern and populate quickfix
+function! tree#grep() abort
   call setqflist([])
-  exec 'g/' . input("pattern: ") . 
+  exec 'g/' . input("grep/ ") . 
       \'/caddexpr expand("%") . ":" . line(".") . ":" . tree#path()'
   copen
   set conceallevel=2 concealcursor=nc
   syntax match qfFileName /^[^/]*/ transparent conceal
   wincmd p
+  cfirst
 endfunction
 
 ""
@@ -207,6 +209,17 @@ endfunction
 " Return filename for file/directory under cursor
 function! tree#filename() abort
   return matchstr(tree#path(), "\[^/\]\\+\[/\]\\?$")
+endfunction
+
+""
+" @public
+" Apply filter on tree. Uses glob
+function! tree#filter() abort
+  let pattern = input("glob/ ")
+  let old_opts = s:options
+  let s:options = s:options . ' --matchdirs --prune -P "' . pattern . '"'
+  call s:reopen()
+  let s:options = old_opts
 endfunction
 
 
@@ -292,6 +305,13 @@ endfunction
 " Toggle showing hidden files
 function! tree#hidden() abort
   let s:hidden = !s:hidden
+  call s:reopen()
+endfunction
+
+""
+" @public
+" Reopen tree. Used for custom commands
+function! tree#reopen() abort
   call s:reopen()
 endfunction
 
