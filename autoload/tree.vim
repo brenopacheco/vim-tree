@@ -51,7 +51,7 @@ let g:vimtree_mappings =
    \   { 'key': 'r',  'cmd': 'tree#rename()',   'desc': 'rename'    },
    \   { 'key': '}',  'cmd': 'tree#next()',     'desc': 'next fold' },
    \   { 'key': '{',  'cmd': 'tree#prev()',     'desc': 'prev fold' },
-   \   { 'key': '*',  'cmd': 'tree#grep()',     'desc': 'grep'    },
+   \   { 'key': '*',  'cmd': 'tree#grep()',     'desc': 'grep'      },
    \   { 'key': 'f',  'cmd': 'tree#filter()',   'desc': 'filter'    },
    \   { 'key': 'zh', 'cmd': 'tree#hidden()',   'desc': 'prev fold' }
    \ ]
@@ -78,7 +78,9 @@ function! tree#open(...) abort
     echohl WarningMsg | echo 'There are unsaved changes.' | echohl NONE
     return
   endif
-  call s:open()
+  if isdirectory(s:dir)
+      call s:open()
+  endif
 endfunction
 
 ""
@@ -388,7 +390,7 @@ augroup vimtree
   au Filetype vimtree set foldtext=tree#foldtext()
   au Filetype vimtree setlocal fillchars=fold:\ 
   au Filetype vimtree setlocal bufhidden=wipe nowrap 
-        \ readonly nobuflisted buftype=nofile
+        \ nomodifiable nobuflisted buftype=nofile
   au BufEnter vimtree set nolist
   au BufEnter vimtree set fillchars+=fold:\ 
 augroup END
