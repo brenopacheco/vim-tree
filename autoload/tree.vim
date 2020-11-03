@@ -21,6 +21,8 @@ let s:level    = 1
 let s:cmd      = 'tree'
 let s:options = '-F --dirsfirst'
 let s:bufname =  "___vimtree___"
+let s:hidden  = 1
+
 " ==============================================================================
 " Mappings
 
@@ -35,21 +37,24 @@ let s:bufname =  "___vimtree___"
 " Default: @setting(s:default_mappings)
 let g:vimtree_mappings =
    \ [
-   \   { 'key': '?', 'cmd': 'tree#help()',     'desc': 'show help' },
-   \   { 'key': 'l', 'cmd': 'tree#expand()',   'desc': 'expand'    },
-   \   { 'key': 'h', 'cmd': 'tree#contract()', 'desc': 'contract'  },
-   \   { 'key': '-', 'cmd': 'tree#up()',       'desc': 'go up'     },
-   \   { 'key': '+', 'cmd': 'tree#down()',     'desc': 'go down'   },
-   \   { 'key': 'q', 'cmd': 'tree#close()',    'desc': 'close'     },
-   \   { 'key': 'e', 'cmd': 'tree#edit()',     'desc': 'edit'      },
-   \   { 'key': 'v', 'cmd': 'tree#vsplit()',   'desc': 'vsplit'    },
-   \   { 'key': 's', 'cmd': 'tree#split()',    'desc': 'split'     },
-   \   { 'key': 't', 'cmd': 'tree#tabedit()',  'desc': 'tabnew'    },
-   \   { 'key': 'i', 'cmd': 'tree#insert()',   'desc': 'insert'    },
-   \   { 'key': 'r', 'cmd': 'tree#rename()',   'desc': 'rename'    },
-   \   { 'key': ']', 'cmd': 'tree#next()',     'desc': 'next fold' },
-   \   { 'key': '[', 'cmd': 'tree#prev()',     'desc': 'prev fold' }
+   \   { 'key': '?',  'cmd': 'tree#help()',     'desc': 'show help' },
+   \   { 'key': 'l',  'cmd': 'tree#expand()',   'desc': 'expand'    },
+   \   { 'key': 'h',  'cmd': 'tree#contract()', 'desc': 'contract'  },
+   \   { 'key': '-',  'cmd': 'tree#up()',       'desc': 'go up'     },
+   \   { 'key': '+',  'cmd': 'tree#down()',     'desc': 'go down'   },
+   \   { 'key': 'q',  'cmd': 'tree#close()',    'desc': 'close'     },
+   \   { 'key': 'e',  'cmd': 'tree#edit()',     'desc': 'edit'      },
+   \   { 'key': 'v',  'cmd': 'tree#vsplit()',   'desc': 'vsplit'    },
+   \   { 'key': 's',  'cmd': 'tree#split()',    'desc': 'split'     },
+   \   { 'key': 't',  'cmd': 'tree#tabedit()',  'desc': 'tabnew'    },
+   \   { 'key': 'i',  'cmd': 'tree#insert()',   'desc': 'insert'    },
+   \   { 'key': 'r',  'cmd': 'tree#rename()',   'desc': 'rename'    },
+   \   { 'key': ']',  'cmd': 'tree#next()',     'desc': 'next fold' },
+   \   { 'key': '[',  'cmd': 'tree#prev()',     'desc': 'prev fold' },
+   \   { 'key': 'zh', 'cmd': 'tree#hidden()',   'desc': 'prev fold' }
    \ ]
+
+let g:vimtree_ignore = [ '.git', '.svn' ]
 
 " ==============================================================================
 " API
@@ -263,15 +268,21 @@ function! tree#dir() abort
   return s:dir
 endfunction
 
+""
+" @public
+" Toggle showing hidden files
+function! tree#hidden() abort
+  let s:hidden = !s:hidden
+  call s:reopen()
+endfunction
+
 " ==============================================================================
 " Auxiliary
 
 function! s:open() abort
-  let treecmd = s:cmd . ' ' . s:options 
-        \ . ' -L ' . s:level . ' ' . s:dir
   call bufadd(s:bufname)
   exec 'noautocmd e ' . s:bufname
-  call append(0, systemlist(treecmd))
+  call append(0, s:results())
   call setpos('.', [0, s:line, s:col, 0])
   for mapping  in g:vimtree_mappings
     exec 'noremap <silent><buffer><nowait> ' 
@@ -307,6 +318,28 @@ function s:pathdir() abort
   endif
   let dir = substitute(dir, '\n', '', 'g')
   return dir
+endfunction
+
+function! s:results()
+  let cmd = s:cmd . ' ' . s:options 
+        \ . ' -L ' . s:level . ' ' . s:dir
+  let ignore = ''
+  let root      = systemlist('git rev-parse --show-toplevel')[0]
+  if v:shell_error == 0
+    let gitignore = root . '/.gitignore'
+    let filters   = system("grep -hvE '^$|^#' " . gitignore . " | sed 's:/$::' | tr '\n' '\|'")
+    let ignore = substitute(filters, '\n', '', 'g')
+  endif
+  if len(g:vimtree_ignore) > 0
+    for pattern in g:vimtree_ignore
+      let ignore = ignore . pattern . '|'
+    endfor
+  endif
+  let cmd = cmd . ' -I "' . ignore . '"'
+  if s:hidden == 0
+    let cmd = cmd . ' -a'
+  endif
+  return systemlist(cmd)
 endfunction
 
 augroup vimtree
