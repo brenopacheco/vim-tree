@@ -200,12 +200,13 @@ endfunction
 ""
 " @public
 " Returns the path for file/directory under cursor.
-function! tree#path() abort
-  let path = ''
+function! tree#path(...) abort
   let line = line('.')
-  let scol = col('.')
-  let col = len(getline('.'))
-  call setpos('.', [0, line, col, 0])
+  if a:0 > 0
+    let line = a:1
+  endif
+  let path = ''
+  let col = len(getline(line))
   while line > 1
     let c = match(getline(line), ' \zs[^ │─├└]')
     if c < col
@@ -217,7 +218,6 @@ function! tree#path() abort
     endif
     let line -= 1
   endwhile
-  call setpos('.', [0, line('.'), scol, 0])
   return s:dir . '/' . path
 endfunction
 
@@ -228,8 +228,6 @@ function! tree#foldlevel(lnum)
     if a:lnum == 1
       return 0
     endif
-    " let w0 = tree#foldwidth(a:lnum)
-    " let w1 = tree#foldwidth(a:lnum+1)
     let w0 = s:foldwidth(a:lnum)
     let w1 = s:foldwidth(a:lnum+1)
     let diff = w1 - w0
@@ -247,8 +245,7 @@ endfunction
 " function! tree#foldwidth(lnum)
 function! s:foldwidth(lnum)
 	let line = getline(a:lnum)
-	let filtered = substitute(line, '[│ ├└]', ' ', 'g')
-    return (match(filtered, '─') + 3) / 4
+    return (strwidth(matchstr(line, '.*── ')) - 4) / 4
 endfunction
 
 ""
@@ -256,9 +253,9 @@ endfunction
 " Function used to define fold text using `foldtext`
 function! tree#foldtext()
   let line = getline(v:foldstart)
-  let lines = v:foldend-v:foldstart + 1
-  let text = line . "\t" . '# '.lines.' lines'
-  return text
+  let lines = v:foldend-v:foldstart
+  let length = 69 - strwidth(line) - len(lines)
+  return line . repeat(' ', length) . lines . ' #lines'
 endfunction
 
 ""
@@ -350,5 +347,6 @@ augroup vimtree
   au Filetype vimtree setlocal fillchars=fold:\ 
   au Filetype vimtree setlocal bufhidden=wipe nowrap 
         \ readonly nobuflisted buftype=nofile
-  " au Filetype vimtree au CursorMoved <buffer> :echo tree#info()
+  au BufEnter vimtree set nolist
+  au BufEnter vimtree set fillchars+=fold:\ 
 augroup END
