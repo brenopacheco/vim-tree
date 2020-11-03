@@ -42,15 +42,16 @@ let g:vimtree_mappings =
    \   { 'key': 'h',  'cmd': 'tree#contract()', 'desc': 'contract'  },
    \   { 'key': '-',  'cmd': 'tree#up()',       'desc': 'go up'     },
    \   { 'key': '+',  'cmd': 'tree#down()',     'desc': 'go down'   },
-   \   { 'key': 'q',  'cmd': 'tree#close()',    'desc': 'close'     },
+   \   { 'key': 'x',  'cmd': 'tree#close()',    'desc': 'close'     },
    \   { 'key': 'e',  'cmd': 'tree#edit()',     'desc': 'edit'      },
    \   { 'key': 'v',  'cmd': 'tree#vsplit()',   'desc': 'vsplit'    },
    \   { 'key': 's',  'cmd': 'tree#split()',    'desc': 'split'     },
    \   { 'key': 't',  'cmd': 'tree#tabedit()',  'desc': 'tabnew'    },
    \   { 'key': 'i',  'cmd': 'tree#insert()',   'desc': 'insert'    },
    \   { 'key': 'r',  'cmd': 'tree#rename()',   'desc': 'rename'    },
-   \   { 'key': ']',  'cmd': 'tree#next()',     'desc': 'next fold' },
-   \   { 'key': '[',  'cmd': 'tree#prev()',     'desc': 'prev fold' },
+   \   { 'key': '}',  'cmd': 'tree#next()',     'desc': 'next fold' },
+   \   { 'key': '{',  'cmd': 'tree#prev()',     'desc': 'prev fold' },
+   \   { 'key': 'f',  'cmd': 'tree#find()',     'desc': 'find'    },
    \   { 'key': 'zh', 'cmd': 'tree#hidden()',   'desc': 'prev fold' }
    \ ]
 
@@ -187,6 +188,27 @@ endfunction
 function! tree#prev() abort
   norm kzkj
 endfunction
+
+""
+" @public
+" Apply filter and populate quickfix
+function! tree#find() abort
+  call setqflist([])
+  exec 'g/' . input("pattern: ") . 
+      \'/caddexpr expand("%") . ":" . line(".") . ":" . tree#path()'
+  copen
+  set conceallevel=2 concealcursor=nc
+  syntax match qfFileName /^[^/]*/ transparent conceal
+  wincmd p
+endfunction
+
+""
+" @public
+" Return filename for file/directory under cursor
+function! tree#filename() abort
+  return matchstr(tree#path(), "\[^/\]\\+\[/\]\\?$")
+endfunction
+
 
 ""
 " @public
