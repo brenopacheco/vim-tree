@@ -16,7 +16,7 @@
 
 let s:line     = 0
 let s:col      = 0
-let s:dir      = getcwd()
+let s:dir      = ''
 let s:level    = 1
 let s:cmd      = 'tree'
 let s:options = '-F --dirsfirst'
@@ -71,8 +71,12 @@ let g:vimtree_ignore = [ '.git', '.svn' ]
 " @default dir=`getcwd()`
 function! tree#open(...) abort
   if a:0 > 0
-    let s:dir = system('realpath ' . a:1)
-    let s:dir = substitute(s:dir, '\n', '', 'g')
+    let dirpath = system('realpath ' . a:1)
+    if v:shell_error == 0
+      let s:dir = substitute(dirpath, '\n', '', 'g')
+    endif
+  else
+    let s:dir = getcwd()
   endif
   if !&hidden && &modified
     echohl WarningMsg | echo 'There are unsaved changes.' | echohl NONE
@@ -323,6 +327,7 @@ endfunction
 function! s:open() abort
   call bufadd(s:bufname)
   exec 'noautocmd e ' . s:bufname
+  setlocal modifiable 
   call append(0, s:results())
   call setpos('.', [0, s:line, s:col, 0])
   for mapping  in g:vimtree_mappings
@@ -330,6 +335,7 @@ function! s:open() abort
           \ . mapping.key . ' :call ' . mapping.cmd . '<CR>'
   endfor
   set ft=vimtree
+  setlocal nomodifiable 
 endfunction
 
 function! s:close() abort
@@ -390,7 +396,7 @@ augroup vimtree
   au Filetype vimtree set foldtext=tree#foldtext()
   au Filetype vimtree setlocal fillchars=fold:\ 
   au Filetype vimtree setlocal bufhidden=wipe nowrap 
-        \ nomodifiable nobuflisted buftype=nofile
+        \ nobuflisted buftype=nofile
   au BufEnter vimtree set nolist
   au BufEnter vimtree set fillchars+=fold:\ 
 augroup END
