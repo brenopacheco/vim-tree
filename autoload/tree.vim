@@ -100,6 +100,7 @@ endfunction
 function! tree#up() abort
   let s:dir = system('dirname ' . s:dir)
   let s:dir = substitute(s:dir, '\n', '', 'g')
+  let s:level = 1
   call s:reopen()
 endfunction
 
