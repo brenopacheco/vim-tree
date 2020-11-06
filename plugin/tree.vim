@@ -21,9 +21,9 @@ endif
 " @Setting g:vimtree_handledirs
 " If set to true (1) by the user, opening a directory using :e <dir>
 " will cause vim-tree to open it instead of Netrw
-if g:vimtree_handledirs
-  augroup vimtree_handledirs
-    autocmd VimEnter * silent! autocmd! FileExplorer
-    au BufEnter,VimEnter * call tree#open(expand('<amatch>'))
-  augroup END
-endif
+" if g:vimtree_handledirs
+"   augroup vimtree_handledirs
+"     autocmd VimEnter * silent! autocmd! FileExplorer
+"     au BufEnter,VimEnter * call tree#open(expand('<amatch>'))
+"   augroup END
+" endif

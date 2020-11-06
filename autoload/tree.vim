@@ -341,7 +341,7 @@ endfunction
 
 function! s:close() abort
   if bufexists(s:bufname) 
-       silent exec 'bw! ' . bufnr(s:bufname)
+       silent exec 'bw! "' . bufnr(s:bufname) . '"'
   endif 
 endfunction
 
