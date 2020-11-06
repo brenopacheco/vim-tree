@@ -22,6 +22,7 @@ let s:cmd      = 'tree'
 let s:options = '-F --dirsfirst'
 let s:bufname =  "___vimtree___"
 let s:hidden  = 1
+let s:cd      = 1
 
 " ==============================================================================
 " Mappings
@@ -56,8 +57,6 @@ let g:vimtree_mappings =
    \   { 'key': 'zh', 'cmd': 'tree#hidden()',   'desc': 'prev fold' }
    \ ]
 
-let g:vimtree_ignore = [ '.git', '.svn' ]
-
 " ==============================================================================
 " API
 
@@ -71,10 +70,15 @@ let g:vimtree_ignore = [ '.git', '.svn' ]
 " @default dir=`getcwd()`
 function! tree#open(...) abort
   if a:0 > 0
-    let dirpath = system('realpath ' . a:1)
-    if v:shell_error == 0
-      let s:dir = substitute(dirpath, '\n', '', 'g')
+	if a:1 == ''
+		return
+	endif
+    if !isdirectory(a:1)
+		echohl WarningMsg | echo 'Invalid directory.' | echohl NONE
+		return
     endif
+    let dirpath = system('realpath ' . a:1)
+    let s:dir = substitute(dirpath, '\n', '', 'g')
   else
     let s:dir = getcwd()
   endif
@@ -260,7 +264,10 @@ function! tree#path(...) abort
     endif
     let line -= 1
   endwhile
-  return s:dir . '/' . path
+  echo "path -> " . path
+  return s:dir == '/' ? 
+			  \ '/' . path : 
+			  \ s:dir . '/' . path
 endfunction
 
 ""
@@ -397,7 +404,8 @@ augroup vimtree
   au Filetype vimtree set foldtext=tree#foldtext()
   au Filetype vimtree setlocal fillchars=fold:\ 
   au Filetype vimtree setlocal bufhidden=wipe nowrap 
-        \ nobuflisted buftype=nofile
+        \ nobuflisted buftype=nofile noswapfile
   au BufEnter vimtree set nolist
   au BufEnter vimtree set fillchars+=fold:\ 
+  au BufEnter vimtree set buftype=vimtree
 augroup END

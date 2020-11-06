@@ -12,7 +12,20 @@ let g:loaded_vimtree = 1
 " @default directory=`getcwd()`
 command -complete=dir -nargs=? Tree call tree#open(<f-args>)
 
+""
+" Opens up a vim-tree in [directory] with a vertical split
+" @default directory=`getcwd()`
+command -complete=dir -nargs=? VTree vsp | call tree#open(<f-args>)
 
+""
+" Ignored patterns. Even toggling hidden won't show 
+" files with these patterns
+if !exists('g:vimtree_ignore')
+	let g:vimtree_ignore = [ '.git', '.svn' ]
+endif
+
+""
+" Let vim-tree handle directories like Netrw
 if !exists('g:vimtree_handledirs')
   let g:vimtree_handledirs = 1
 endif
@@ -21,9 +34,9 @@ endif
 " @Setting g:vimtree_handledirs
 " If set to true (1) by the user, opening a directory using :e <dir>
 " will cause vim-tree to open it instead of Netrw
-" if g:vimtree_handledirs
-"   augroup vimtree_handledirs
-"     autocmd VimEnter * silent! autocmd! FileExplorer
-"     au BufEnter,VimEnter * call tree#open(expand('<amatch>'))
-"   augroup END
-" endif
+if g:vimtree_handledirs
+  augroup vimtree_handledirs
+    autocmd VimEnter * silent! autocmd! FileExplorer
+    au BufEnter,VimEnter * call tree#open(expand('<amatch>'))
+  augroup END
+endif
