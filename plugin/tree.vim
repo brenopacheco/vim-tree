@@ -37,6 +37,13 @@ endif
 if g:vimtree_handledirs
   augroup vimtree_handledirs
     autocmd VimEnter * silent! autocmd! FileExplorer
-    au BufEnter,VimEnter * call tree#open(expand('<amatch>'))
+    au BufEnter,VimEnter * call s:handledir(expand('<amatch>'))
   augroup END
 endif
+
+function s:handledir(dir) abort
+	if a:dir == '' || !isdirectory(a:dir)
+		return
+	endif
+	call tree#open(a:dir)
+endfunction

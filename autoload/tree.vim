@@ -4,6 +4,23 @@
 " Last Modified: 2020-11-02
 
 ""
+" @section Todo, todo
+" 1. add folding to documentation 
+" 2. add option to shrink tree-width (for using as a drawer)
+" 3. modify code to allow user to spawn multiple trees
+" 4. use regex instead of glob for grepping (tree does not have that option)
+" -> an alternative to using tree directly is to pipe "fd" into tree
+" -> "fd" doesn't decorate dirs/pipes/sockets, so an -x print... needed
+" 5. add rm operation
+" 6. add mkdir operation
+" 7. do not remove tree when it's out of sight. allow going back
+" 8. add command to open as a "project" tree
+"    -> when in a git repo, opening tree from any file will set the root
+"       to git's root
+"    -> tree will be expanded until the file from which the tree was open
+
+
+""
 " @section Introduction, intro
 " This is a very basic "tree" command wrapper, with similar functionality
 " to Netrw. By calling @command(Tree) the results of the tree
@@ -43,7 +60,7 @@ let g:vimtree_mappings =
    \   { 'key': 'h',  'cmd': 'tree#contract()', 'desc': 'contract'  },
    \   { 'key': '-',  'cmd': 'tree#up()',       'desc': 'go up'     },
    \   { 'key': '+',  'cmd': 'tree#down()',     'desc': 'go down'   },
-   \   { 'key': 'x',  'cmd': 'tree#close()',    'desc': 'close'     },
+   \   { 'key': 'q',  'cmd': 'tree#close()',    'desc': 'close'     },
    \   { 'key': 'e',  'cmd': 'tree#edit()',     'desc': 'edit'      },
    \   { 'key': 'v',  'cmd': 'tree#vsplit()',   'desc': 'vsplit'    },
    \   { 'key': 's',  'cmd': 'tree#split()',    'desc': 'split'     },
@@ -70,9 +87,6 @@ let g:vimtree_mappings =
 " @default dir=`getcwd()`
 function! tree#open(...) abort
   if a:0 > 0
-	if a:1 == ''
-		return
-	endif
     if !isdirectory(a:1)
 		echohl WarningMsg | echo 'Invalid directory.' | echohl NONE
 		return
@@ -206,7 +220,7 @@ endfunction
 " Grep pattern and populate quickfix
 function! tree#grep() abort
   call setqflist([])
-  exec 'g/' . input("grep/ ") . 
+  exec 'g/' . input("vimgrep /") . 
       \'/caddexpr expand("%") . ":" . line(".") . ":" . tree#path()'
   copen
   set conceallevel=2 concealcursor=nc
@@ -226,7 +240,7 @@ endfunction
 " @public
 " Apply filter on tree. Uses glob
 function! tree#filter() abort
-  let pattern = input("glob/ ")
+  let pattern = input("glob/")
   let old_opts = s:options
   let s:options = s:options . ' --matchdirs --prune -P "' . pattern . '"'
   call s:reopen()
@@ -264,7 +278,6 @@ function! tree#path(...) abort
     endif
     let line -= 1
   endwhile
-  echo "path -> " . path
   return s:dir == '/' ? 
 			  \ '/' . path : 
 			  \ s:dir . '/' . path
