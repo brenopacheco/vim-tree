@@ -18,6 +18,12 @@ command -complete=dir -nargs=? Tree call tree#open(<f-args>)
 command -complete=dir -nargs=? VTree vsp | call tree#open(<f-args>)
 
 ""
+" Opens up vim-tree in a git project's root directory.
+" The tree opens expanded and unfolded
+" @default directory=`getcwd()`
+command GTree call tree#open_root(<f-args>)
+
+""
 " Ignored patterns. Even toggling hidden won't show 
 " files with these patterns
 if !exists('g:vimtree_ignore')

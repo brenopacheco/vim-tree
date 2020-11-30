@@ -83,7 +83,8 @@ let g:vimtree_mappings =
 
 ""
 " @public
-" Opens vim-tree in [optional]
+" Opens vim-tree in [optional] directory.
+" If second argument is given, use it as start expand level
 " @default dir=`getcwd()`
 function! tree#open(...) abort
   if a:0 > 0
@@ -93,6 +94,9 @@ function! tree#open(...) abort
     endif
     let dirpath = system('realpath ' . a:1)
     let s:dir = substitute(dirpath, '\n', '', 'g')
+    if a:0 > 1
+        let s:level = a:2
+    endif
   else
     let s:dir = getcwd()
   endif
@@ -103,6 +107,22 @@ function! tree#open(...) abort
   if isdirectory(s:dir)
       call s:open()
   endif
+endfunction
+
+
+""
+" @public
+" Opens tree in git's root directory, expanded
+function! tree#open_root() abort
+  let root_dir = system('git rev-parse --show-toplevel 2>/dev/null')
+  if v:shell_error != 0
+    echohl WarningMsg | echo 'Not a git repository.' | echohl NONE
+    return
+  endif
+  let root_dir = substitute(root_dir, '\n', '', '')
+  let depth = system('fd "." -t d ' . root_dir 
+              \ . ' | awk -F"/" "NF > max {max = NF} END {print max}"')
+  call tree#open(root_dir, depth - 1)
 endfunction
 
 ""
