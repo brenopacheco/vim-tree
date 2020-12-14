@@ -55,23 +55,26 @@ let s:cd      = 1
 " Default: @setting(s:default_mappings)
 let g:vimtree_mappings =
    \ [
-   \   { 'key': '?',  'cmd': 'tree#help()',     'desc': 'show help' },
-   \   { 'key': 'l',  'cmd': 'tree#expand()',   'desc': 'expand'    },
-   \   { 'key': 'h',  'cmd': 'tree#contract()', 'desc': 'contract'  },
-   \   { 'key': '-',  'cmd': 'tree#up()',       'desc': 'go up'     },
-   \   { 'key': '+',  'cmd': 'tree#down()',     'desc': 'go down'   },
-   \   { 'key': 'q',  'cmd': 'tree#close()',    'desc': 'close'     },
-   \   { 'key': 'e',  'cmd': 'tree#edit()',     'desc': 'edit'      },
-   \   { 'key': 'v',  'cmd': 'tree#vsplit()',   'desc': 'vsplit'    },
-   \   { 'key': 's',  'cmd': 'tree#split()',    'desc': 'split'     },
-   \   { 'key': 't',  'cmd': 'tree#tabedit()',  'desc': 'tabnew'    },
-   \   { 'key': 'i',  'cmd': 'tree#insert()',   'desc': 'insert'    },
-   \   { 'key': 'r',  'cmd': 'tree#rename()',   'desc': 'rename'    },
-   \   { 'key': '}',  'cmd': 'tree#next()',     'desc': 'next fold' },
-   \   { 'key': '{',  'cmd': 'tree#prev()',     'desc': 'prev fold' },
-   \   { 'key': '*',  'cmd': 'tree#grep()',     'desc': 'grep'      },
-   \   { 'key': 'f',  'cmd': 'tree#filter()',   'desc': 'filter'    },
-   \   { 'key': 'zh', 'cmd': 'tree#hidden()',   'desc': 'prev fold' }
+   \   { 'key': '?',  'cmd': 'tree#help()',     'desc': 'show help'    },
+   \   { 'key': 'l',  'cmd': 'tree#expand()',   'desc': 'expand'       },
+   \   { 'key': 'h',  'cmd': 'tree#contract()', 'desc': 'contract'     },
+   \   { 'key': '-',  'cmd': 'tree#up()',       'desc': 'go up'        },
+   \   { 'key': '+',  'cmd': 'tree#down()',     'desc': 'go down'      },
+   \   { 'key': 'q',  'cmd': 'tree#close()',    'desc': 'close'        },
+   \   { 'key': 'e',  'cmd': 'tree#edit()',     'desc': 'edit'         },
+   \   { 'key': 'v',  'cmd': 'tree#vsplit()',   'desc': 'vsplit'       },
+   \   { 'key': 's',  'cmd': 'tree#split()',    'desc': 'split'        },
+   \   { 'key': 't',  'cmd': 'tree#tabedit()',  'desc': 'tabnew'       },
+   \   { 'key': 'i',  'cmd': 'tree#touch()',    'desc': 'insert/touch' },
+   \   { 'key': 'D',  'cmd': 'tree#delete()',   'desc': 'delete'       },
+   \   { 'key': 'r',  'cmd': 'tree#rename()',   'desc': 'rename'       },
+   \   { 'key': 'm',  'cmd': 'tree#mkdir()',    'desc': 'mkdir'        },
+   \   { 'key': 'R',  'cmd': 'tree#refresh()',  'desc': 'refresh'      },
+   \   { 'key': '}',  'cmd': 'tree#next()',     'desc': 'next fold'    },
+   \   { 'key': '{',  'cmd': 'tree#prev()',     'desc': 'prev fold'    },
+   \   { 'key': '*',  'cmd': 'tree#grep()',     'desc': 'grep'         },
+   \   { 'key': 'f',  'cmd': 'tree#filter()',   'desc': 'filter'       },
+   \   { 'key': 'zh', 'cmd': 'tree#hidden()',   'desc': 'prev fold'    }
    \ ]
 
 " ==============================================================================
@@ -120,9 +123,10 @@ function! tree#open_root() abort
     return
   endif
   let root_dir = substitute(root_dir, '\n', '', '')
-  let depth = system('fd "." -t d ' . root_dir 
-              \ . ' | awk -F"/" "NF > max {max = NF} END {print max}"')
-  call tree#open(root_dir, depth - 1)
+  let depth = str2nr(system('fd . -t d ' . root_dir 
+              \ . ' | sed "s#' . root_dir . '/##"'
+              \ . ' | awk -F"/" "NF > max {max = NF} END {print max}"'))
+  call tree#open(root_dir, depth)
 endfunction
 
 ""
@@ -140,6 +144,7 @@ function! tree#up() abort
   let s:dir = substitute(s:dir, '\n', '', 'g')
   let s:level = 1
   call s:reopen()
+  echo "Tree level: " . s:level
 endfunction
 
 ""
@@ -148,6 +153,7 @@ endfunction
 function! tree#down() abort
   let  s:dir = s:pathdir()
   call s:reopen()
+  echo "Tree level: " . s:level
 endfunction
 
 ""
@@ -156,6 +162,7 @@ endfunction
 function! tree#expand() abort
   let s:level = s:level + 1
   call s:reopen()
+  echo "Tree level: " . s:level
 endfunction
 
 ""
@@ -164,6 +171,7 @@ endfunction
 function! tree#contract() abort
   let s:level = s:level > 1 ? s:level - 1 : 1
   call s:reopen()
+  echo "Tree level: " . s:level
 endfunction
 
 ""
@@ -202,10 +210,20 @@ endfunction
 ""
 " @public
 " Create (touch) new file in the directory under cursor.
-function! tree#insert() abort
+function! tree#touch() abort
   let dir = s:pathdir() . '/'
   let fn = input('Filename: ' . dir)
   call system('touch ' . dir . fn)
+  call s:reopen()
+endfunction
+
+""
+" @public
+" Create (mkdir) new directory under path under cursor.
+function! tree#mkdir() abort
+  let dir = s:pathdir() . '/'
+  let fn = input('Dirname: ' . dir)
+  call system('mkdir ' . dir . fn)
   call s:reopen()
 endfunction
 
@@ -220,6 +238,49 @@ function! tree#rename() abort
   call system('mv ' . path . ' ' . fn)
   call s:reopen()
 endfunction
+
+""
+" @public
+" Delete file/directory under cursor
+function! tree#delete() abort
+  let dir = s:pathdir() . '/'
+  let path = tree#path()
+  let prompt = 'Remove ' . (isdirectory(path) ? 'directory ' : 'file ' ) 
+              \ . path. ' (y/n)?: '
+  let fn = input({'prompt': prompt, 'completion': 'custom,tree#yes_no'})
+  if fn == 'yes' || fn == 'y'
+    echo " -> removing " . path
+    echo system('rm -r ' . path)
+  else
+    echo ' -> cancelled.'
+  endif
+  call s:reopen()
+endfunction
+
+function tree#yes_no(A,L,P)
+  return join(['n', 'y'], "\n")
+endfunction
+
+""
+" @public
+" Reopen tree
+function! tree#refresh() abort
+  call s:reopen()
+endfunction
+
+
+""
+" @public
+" Rename file under cursor
+function! tree#rename() abort
+  let dir = s:pathdir() . '/'
+  let path = tree#path()
+  let prompt = 'Rename: ' . path . ' -> '
+  let fn = input({'prompt': prompt, 'default': path})
+  call system('mv ' . path . ' ' . fn)
+  call s:reopen()
+endfunction
+
 
 ""
 " @public
