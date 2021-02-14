@@ -43,42 +43,6 @@ let s:cd      = 1
 let s:oldbuf  = 0
 
 " ==============================================================================
-" Mappings
-
-""
-" @section Configuration, config
-" The plugin is not yet very configurable, unfortunately.
-" You can define what keys will be mapped whenever a vim-tree buffer
-" is created using the @setting(g:vimtree_mappings)
-
-""
-" Mappings for vim-tree buffer.
-" Default: @setting(s:default_mappings)
-let g:vimtree_mappings =
-    \ [
-    \   { 'key': '?',  'cmd': 'tree#help()',     'desc': 'show help'    },
-    \   { 'key': 'l',  'cmd': 'tree#expand()',   'desc': 'expand'       },
-    \   { 'key': 'h',  'cmd': 'tree#contract()', 'desc': 'contract'     },
-    \   { 'key': '-',  'cmd': 'tree#up()',       'desc': 'go up'        },
-    \   { 'key': '+',  'cmd': 'tree#down()',     'desc': 'go down'      },
-    \   { 'key': 'q',  'cmd': 'tree#close()',    'desc': 'close'        },
-    \   { 'key': 'e',  'cmd': 'tree#edit()',     'desc': 'edit'         },
-    \   { 'key': 'v',  'cmd': 'tree#vsplit()',   'desc': 'vsplit'       },
-    \   { 'key': 's',  'cmd': 'tree#split()',    'desc': 'split'        },
-    \   { 'key': 't',  'cmd': 'tree#tabedit()',  'desc': 'tabnew'       },
-    \   { 'key': 'i',  'cmd': 'tree#touch()',    'desc': 'insert/touch' },
-    \   { 'key': 'D',  'cmd': 'tree#delete()',   'desc': 'delete'       },
-    \   { 'key': 'r',  'cmd': 'tree#rename()',   'desc': 'rename'       },
-    \   { 'key': 'm',  'cmd': 'tree#mkdir()',    'desc': 'mkdir'        },
-    \   { 'key': 'R',  'cmd': 'tree#refresh()',  'desc': 'refresh'      },
-    \   { 'key': '}',  'cmd': 'tree#next()',     'desc': 'next fold'    },
-    \   { 'key': '{',  'cmd': 'tree#prev()',     'desc': 'prev fold'    },
-    \   { 'key': '*',  'cmd': 'tree#grep()',     'desc': 'grep'         },
-    \   { 'key': 'f',  'cmd': 'tree#filter()',   'desc': 'filter'       },
-    \   { 'key': 'zh', 'cmd': 'tree#hidden()',   'desc': 'prev fold'    }
-    \ ]
-
-" ==============================================================================
 " API
 
 ""
@@ -92,7 +56,6 @@ let g:vimtree_mappings =
 " @default dir=`getcwd()`
 function! tree#open(...) abort
     let s:oldbuf = bufnr()
-    echo "old buf:" .  s:oldbuf
     if a:0 > 0
         if !isdirectory(a:1)
             echohl WarningMsg | echo 'Invalid directory.' | echohl NONE
@@ -336,8 +299,8 @@ endfunction
 " @public
 " Shows help for mappings
 function! tree#help() abort
-    for mapping in g:vimtree_mappings
-        echo ' ' . mapping.key . "\t" . mapping.desc
+    for key in keys(g:vimtree_mappings)
+        echo ' ' . key . "\t" . g:vimtree_mappings[key].desc
     endfor
 endfunction
 
@@ -432,26 +395,29 @@ endfunction
 function! s:open() abort
     call bufadd(s:bufname)
     exec 'noautocmd e ' . s:bufname
-    setlocal modifiable 
+    setlocal modifiable
     call append(0, s:results())
     call setpos('.', [0, s:line, s:col, 0])
-    for mapping  in g:vimtree_mappings
+    for key in keys(g:vimtree_mappings)
         exec 'noremap <silent><buffer><nowait> ' 
-            \ . mapping.key . ' :call ' . mapping.cmd . '<CR>'
+            \ . key . ' :call ' . g:vimtree_mappings[key].cmd . '<CR>'
     endfor
     set ft=vimtree
     setlocal nomodifiable 
 endfunction
 
+
+
+""
+" @private
+" Closes ___vimtree___ buffer. Try to restore the last buffer into window.
 function! s:close() abort
     if bufexists(bufname(s:oldbuf))
-        exec s:oldbuf . 'b'
-    else
-        if len(tabpagebuflist()) == 1
-            vsp | enew
-        endif
-        silent bw! ___vimtree___
+        silent exec s:oldbuf . 'b'
+    elseif bufname() == '___vimtree___'
+        enew
     endif
+    silent! bw! ___vimtree___
 endfunction
 
 
@@ -459,9 +425,6 @@ function! s:reopen() abort
     let pos = getpos('.')
     let s:line = pos[1]
     let s:col = pos[2]
-    vsp 
-    enew
-    call s:close()
     call s:open()
 endfunction
 
