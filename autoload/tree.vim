@@ -73,6 +73,7 @@ function! tree#open(...) abort
         echohl WarningMsg | echo 'There are unsaved changes.' | echohl NONE
         return
     endif
+    let s:hidden = !g:vimtree_hidden
     if isdirectory(s:dir)
         call s:open()
     endif

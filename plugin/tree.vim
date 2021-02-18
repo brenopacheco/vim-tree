@@ -36,6 +36,28 @@ let g:vimtree_mappings =
     \   'zh': { 'cmd': 'tree#hidden()',   'desc': 'prev fold'    }
     \ }
 
+""
+" Wether or not to display hidden files by default
+" Default: @setting(s:default_hidden)
+if !exists('g:vimtree_hidden')
+	let g:vimtree_hidden = 0
+endif
+
+""
+" Ignored patterns. Even toggling hidden won't show 
+" files with these patterns
+" Default: @setting(s:default_hidden)
+if !exists('g:vimtree_ignore')
+	let g:vimtree_ignore = [ '.git', '.svn' ]
+endif
+
+""
+" Let vim-tree handle directories like Netrw
+" Default: @setting(s:default_handledirs)
+if !exists('g:vimtree_handledirs')
+  let g:vimtree_handledirs = 1
+endif
+
 
 ""
 " @section Commands, commands
@@ -56,19 +78,6 @@ command -complete=dir -nargs=? VTree vsp | call tree#open(<f-args>)
 " The tree opens expanded and unfolded
 " @default directory=`getcwd()`
 command GTree call tree#open_root()
-
-""
-" Ignored patterns. Even toggling hidden won't show 
-" files with these patterns
-if !exists('g:vimtree_ignore')
-	let g:vimtree_ignore = [ '.git', '.svn' ]
-endif
-
-""
-" Let vim-tree handle directories like Netrw
-if !exists('g:vimtree_handledirs')
-  let g:vimtree_handledirs = 1
-endif
 
 ""
 " @Setting g:vimtree_handledirs
