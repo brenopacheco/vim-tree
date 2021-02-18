@@ -4,27 +4,10 @@
 " Last Modified: 2020-11-02
 
 ""
-" @section Todo, todo
-" 1. add folding to documentation 
-" 2. add option to shrink tree-width (for using as a drawer)
-" 3. modify code to allow user to spawn multiple trees
-" 4. use regex instead of glob for grepping (tree does not have that option)
-" -> an alternative to using tree directly is to pipe "fd" into tree
-" -> "fd" doesn't decorate dirs/pipes/sockets, so an -x print... needed
-" 5. add rm operation
-" 6. add mkdir operation
-" 7. do not remove tree when it's out of sight. allow going back
-" 8. add command to open as a "project" tree
-"    -> when in a git repo, opening tree from any file will set the root
-"       to git's root
-"    -> tree will be expanded until the file from which the tree was open
-
-
-""
 " @section Introduction, intro
 " This is a very basic "tree" command wrapper, with similar functionality
 " to Netrw. By calling @command(Tree) the results of the tree
-" command show in the buffer, from where you can expand/contract
+" command show in the buffer, from where you can expand/collapse
 " the tree, go down into a specific directory or open/create/rename
 " a file. Some mappings are probided by default.
 
@@ -109,7 +92,7 @@ endfunction
 function! tree#up() abort
     let s:dir = system('dirname ' . s:dir)
     let s:dir = substitute(s:dir, '\n', '', 'g')
-    let s:level = 1
+    " let s:level = 1
     call s:reopen()
     echo "Tree level: " . s:level
 endfunction
@@ -134,8 +117,8 @@ endfunction
 
 ""
 " @public
-" Contract tree, decreasing -L level in tree command.
-function! tree#contract() abort
+" collapse tree, decreasing -L level in tree command.
+function! tree#collapse() abort
     let s:level = s:level > 1 ? s:level - 1 : 1
     call s:reopen()
     echo "Tree level: " . s:level
@@ -235,7 +218,6 @@ function! tree#refresh() abort
     call s:reopen()
 endfunction
 
-
 ""
 " @public
 " Rename file under cursor
@@ -286,7 +268,7 @@ endfunction
 
 ""
 " @public
-" Apply filter on tree. Uses glob
+" Apply filter on tree. Uses glob. Tree doesn't provide regex option
 function! tree#filter() abort
     let pattern = input("glob/")
     let old_opts = s:options
@@ -298,7 +280,7 @@ endfunction
 
 ""
 " @public
-" Shows help for mappings
+" Shows help for mappings based on g:vimtree_mappings
 function! tree#help() abort
     for key in keys(g:vimtree_mappings)
         echo ' ' . key . "\t" . g:vimtree_mappings[key].desc
@@ -307,7 +289,8 @@ endfunction
 
 ""
 " @public
-" Returns the path for file/directory under cursor.
+" Returns the path for file/directory under cursor. A line number
+" may be given as argument.
 function! tree#path(...) abort
     let line = line('.')
     if a:0 > 0
@@ -329,6 +312,28 @@ function! tree#path(...) abort
     return s:dir == '/' ? 
         \ '/' . path : 
         \ s:dir . '/' . path
+endfunction
+
+""
+" @public
+" Returns root directory being used by vim-tree
+function! tree#dir() abort
+    return s:dir
+endfunction
+
+""
+" @public
+" Toggle showing hidden files
+function! tree#hidden() abort
+    let s:hidden = !s:hidden
+    call s:reopen()
+endfunction
+
+""
+" @public
+" Reopen tree. Used for custom commands
+function! tree#reopen() abort
+    call s:reopen()
 endfunction
 
 ""
@@ -368,31 +373,12 @@ function! tree#foldtext()
     return line . repeat(' ', length) . lines . ' #lines'
 endfunction
 
-""
-" @public
-" Returns root directory being used by vim-tree
-function! tree#dir() abort
-    return s:dir
-endfunction
-
-""
-" @public
-" Toggle showing hidden files
-function! tree#hidden() abort
-    let s:hidden = !s:hidden
-    call s:reopen()
-endfunction
-
-""
-" @public
-" Reopen tree. Used for custom commands
-function! tree#reopen() abort
-    call s:reopen()
-endfunction
-
 " ==============================================================================
 " Auxiliary
 
+""
+" @private
+" Creates the ___vimtree___ buffer
 function! s:open() abort
     call bufadd(s:bufname)
     exec 'noautocmd e ' . s:bufname
@@ -407,11 +393,10 @@ function! s:open() abort
     setlocal nomodifiable 
 endfunction
 
-
-
 ""
 " @private
 " Closes ___vimtree___ buffer. Try to restore the last buffer into window.
+" Avoids closing last window in the tab.
 function! s:close() abort
     if bufexists(bufname(s:oldbuf))
         silent exec s:oldbuf . 'b'
@@ -421,7 +406,8 @@ function! s:close() abort
     silent! bw! ___vimtree___
 endfunction
 
-
+""
+" @private
 function! s:reopen() abort
     let pos = getpos('.')
     let s:line = pos[1]
@@ -429,6 +415,8 @@ function! s:reopen() abort
     call s:open()
 endfunction
 
+""
+" @private
 function s:pathdir() abort
     let path = tree#path()
     let dir = ''
@@ -441,11 +429,16 @@ function s:pathdir() abort
     return dir
 endfunction
 
+
+""
+" @private
+" This is the meat of the plugin. s:results constructs the tree command
+" and returns a list of results. We add the options and some filters based
+" on .gitignore file on the root of the directory. Needs refactoring
 function! s:results()
-    let cmd = s:cmd . ' ' . s:options 
-        \ . ' -L ' . s:level . ' ' . s:dir
+    let cmd    = s:cmd . ' ' . s:options . ' -L ' . s:level . ' ' . s:dir
     let ignore = ''
-    let root      = systemlist('git rev-parse --show-toplevel')[0]
+    let root   = systemlist('git rev-parse --show-toplevel')[0]
     if v:shell_error == 0
         let gitignore = root . '/.gitignore'
         let filters   = system("grep -hvE '^$|^#' " . gitignore . " | sed 's:/$::' | tr '\n' '\|'")

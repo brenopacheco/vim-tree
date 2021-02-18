@@ -13,46 +13,54 @@ INTRODUCTION                                                  *vim-tree-intro*
 
 This is a very basic "tree" command wrapper, with similar functionality to
 Netrw. By calling |:Tree| the results of the tree command show in the buffer,
-from where you can expand/contract the tree, go down into a specific directory
+from where you can expand/collapse the tree, go down into a specific directory
 or open/create/rename a file. Some mappings are probided by default.
 
 ==============================================================================
 CONFIGURATION                                                *vim-tree-config*
 
-The plugin is not yet very configurable, unfortunately. You can define what
-keys will be mapped whenever a vim-tree buffer is created using the
-|g:vimtree_mappings|
+The plugin is not yet very configurable, unfortunately.
 
                                                           *g:vimtree_mappings*
-Mappings for vim-tree buffer.
-Default:
+Mappings inside the vim-tree buffer.
 
->
-  [
-    { 'key': '?', 'cmd': 'tree#help()',     'desc': 'show help' },
-    { 'key': 'l', 'cmd': 'tree#expand()',   'desc': 'expand'    },
-    { 'key': 'h', 'cmd': 'tree#contract()', 'desc': 'contract'  },
-    { 'key': '-', 'cmd': 'tree#up()',       'desc': 'go up'     },
-    { 'key': '+', 'cmd': 'tree#down()',     'desc': 'go down'   },
-    { 'key': 'q', 'cmd': 'tree#close()',    'desc': 'close'     },
-    { 'key': 'e', 'cmd': 'tree#edit()',     'desc': 'edit'      },
-    { 'key': 'v', 'cmd': 'tree#vsplit()',   'desc': 'vsplit'    },
-    { 'key': 's', 'cmd': 'tree#split()',    'desc': 'split'     },
-    { 'key': 't', 'cmd': 'tree#tabedit()',  'desc': 'tabnew'    },
-    { 'key': 'i', 'cmd': 'tree#insert()',   'desc': 'insert'    },
-    { 'key': 'r', 'cmd': 'tree#rename()',   'desc': 'rename'    },
-    { 'key': ']', 'cmd': 'tree#next()',     'desc': 'next fold' },
-    { 'key': '[', 'cmd': 'tree#prev()',     'desc': 'prev fold' }
-  ]
-<
+                                                            *g:vimtree_hidden*
+Display hidden files by default
+
+> default: 0
+
+                                                        *g:vimtree_fold_level*
+Fold level to assign to the window when jumping up and down directories.
+Setting it to 0 will make all branches folded and 99 will make it unfolded.
+
+> default: -1 (do not assign fold level)
+
+                                                            *g:vimtree_ignore*
+Ignored patterns. Even toggling hidden won't show  files with these patterns
+
+> default: [ '.git', '.svn' ]
+
+                                                        *g:vimtree_handledirs*
+Let vim-tree handle directories like Netrw If set to true (1) by the user,
+opening a directory using :e <dir> will cause vim-tree to open it instead of
+Netrw
+
+> default: 1
 
 ==============================================================================
 COMMANDS                                                   *vim-tree-commands*
 
-There is a single command |:Tree|
-
 :Tree [directory]                                                      *:Tree*
   Opens up vim-tree in [directory]
+  [directory] is `getcwd()` if omitted.
+
+:VTree [directory]                                                    *:VTree*
+  Opens up a vim-tree in [directory] with a vertical split
+  [directory] is `getcwd()` if omitted.
+
+:GTree [directory]                                                    *:GTree*
+  Opens up vim-tree in a git project's root directory. The tree opens expanded
+  and unfolded
   [directory] is `getcwd()` if omitted.
 
 ==============================================================================
@@ -61,8 +69,12 @@ FUNCTIONS                                                 *vim-tree-functions*
 Available functions for working with vim-tree and binding mappings
 
 tree#open([optional], [dir])                                     *tree#open()*
-  Opens vim-tree in [optional]
+  Opens vim-tree in [optional] directory. If second argument is given, use it
+  as start expand level
   [dir] is `getcwd()` if omitted.
+
+tree#open_root()                                            *tree#open_root()*
+  Opens tree in git's root directory, expanded
 
 tree#close()                                                    *tree#close()*
   Closes vim-tree
@@ -76,8 +88,8 @@ tree#down()                                                      *tree#down()*
 tree#expand()                                                  *tree#expand()*
   Expand tree, increasing -L level in tree command.
 
-tree#contract()                                              *tree#contract()*
-  Contract tree, decreasing -L level in tree command.
+tree#collapse()                                              *tree#collapse()*
+  collapse tree, decreasing -L level in tree command.
 
 tree#edit()                                                      *tree#edit()*
   Edit file under cursor, closing vim-tree.
@@ -91,8 +103,20 @@ tree#split()                                                    *tree#split()*
 tree#tabedit()                                                *tree#tabedit()*
   Edit file under cursor in a new tab.
 
-tree#insert()                                                  *tree#insert()*
+tree#touch()                                                    *tree#touch()*
   Create (touch) new file in the directory under cursor.
+
+tree#mkdir()                                                    *tree#mkdir()*
+  Create (mkdir) new directory under path under cursor.
+
+tree#rename()                                                  *tree#rename()*
+  Rename file under cursor
+
+tree#delete()                                                  *tree#delete()*
+  Delete file/directory under cursor
+
+tree#refresh()                                                *tree#refresh()*
+  Reopen tree
 
 tree#rename()                                                  *tree#rename()*
   Rename file under cursor
@@ -103,20 +127,36 @@ tree#next()                                                      *tree#next()*
 tree#prev()                                                      *tree#prev()*
   Jump to previous fold
 
+tree#grep()                                                      *tree#grep()*
+  Grep pattern and populate quickfix
+
+tree#filename()                                              *tree#filename()*
+  Return filename for file/directory under cursor
+
+tree#filter()                                                  *tree#filter()*
+  Apply filter on tree. Uses glob. Tree doesn't provide regex option
+
 tree#help()                                                      *tree#help()*
-  Shows help for mappings
+  Shows help for mappings based on g:vimtree_mappings
 
 tree#path()                                                      *tree#path()*
-  Returns the path for file/directory under cursor.
+  Returns the path for file/directory under cursor. A line number may be given
+  as argument.
+
+tree#dir()                                                        *tree#dir()*
+  Returns root directory being used by vim-tree
+
+tree#hidden()                                                  *tree#hidden()*
+  Toggle showing hidden files
+
+tree#reopen()                                                  *tree#reopen()*
+  Reopen tree. Used for custom commands
 
 tree#foldlevel({lnum})                                      *tree#foldlevel()*
   Function used for defining fold level with `fold-expr`
 
 tree#foldtext()                                              *tree#foldtext()*
   Function used to define fold text using `foldtext`
-
-tree#dir()                                                        *tree#dir()*
-  Returns root directory being used by vim-tree
 
 
 vim:tw=78:ts=8:ft=help:norl:

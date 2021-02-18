@@ -2,11 +2,12 @@
 
 This is a very basic "tree" command wrapper, with similar functionality to
 Netrw. By calling :Tree the results of the tree command show in the buffer,
-from where you can expand/contract the tree, go down into a specific directory
+from where you can expand/collapse the tree, go down into a specific directory
 or open/create/rename a file. 
 
 ```vim
     :Tree [directory]
+    :GTree 
 ```
 
 ![vim-tree](./picture.png)
@@ -28,15 +29,5 @@ to map by overriding the g:vimtree_mappings variable.
       \   { 'key': 'l', 'cmd': 'tree#expand()',   'desc': 'expand'    },
       \   { 'key': 'h', 'cmd': 'tree#contract()', 'desc': 'contract'  },
       \   { 'key': '-', 'cmd': 'tree#up()',       'desc': 'go up'     },
-      \   { 'key': '+', 'cmd': 'tree#down()',     'desc': 'go down'   },
-      \   { 'key': 'q', 'cmd': 'tree#close()',    'desc': 'close'     },
-      \   { 'key': 'e', 'cmd': 'tree#edit()',     'desc': 'edit'      },
-      \   { 'key': 'v', 'cmd': 'tree#vsplit()',   'desc': 'vsplit'    },
-      \   { 'key': 's', 'cmd': 'tree#split()',    'desc': 'split'     },
-      \   { 'key': 't', 'cmd': 'tree#tabedit()',  'desc': 'tabnew'    },
-      \   { 'key': 'i', 'cmd': 'tree#insert()',   'desc': 'insert'    },
-      \   { 'key': 'r', 'cmd': 'tree#rename()',   'desc': 'rename'    },
-      \   { 'key': ']', 'cmd': 'tree#next()',     'desc': 'next fold' },
-      \   { 'key': '[', 'cmd': 'tree#prev()',     'desc': 'prev fold' }
-      \ ]
+      ...
 ```
