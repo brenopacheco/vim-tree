@@ -128,9 +128,8 @@ endfunction
 " @public
 " Edit file under cursor, closing vim-tree.
 function! tree#edit() abort
-    let path = tree#path()
-    exec 'e ' . path
-    call s:close()
+    exec 'e ' . tree#path()
+    " call s:close()
 endfunction
 
 ""
@@ -217,19 +216,6 @@ endfunction
 function! tree#refresh() abort
     call s:reopen()
 endfunction
-
-""
-" @public
-" Rename file under cursor
-function! tree#rename() abort
-    let dir = s:pathdir() . '/'
-    let path = tree#path()
-    let prompt = 'Rename: ' . path . ' -> '
-    let fn = input({'prompt': prompt, 'default': path})
-    call system('mv ' . path . ' ' . fn)
-    call s:reopen()
-endfunction
-
 
 ""
 " @public
