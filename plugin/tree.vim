@@ -8,7 +8,8 @@ let g:loaded_vimtree = 1
 " The plugin is not yet very configurable, unfortunately.
 
 ""
-" Mappings inside the vim-tree buffer.
+" Global mappings for the vim-tree buffer. You can override these mappings
+" by calling tree#reset_keys( my mappings ) after opening a tree buffer.
 let g:vimtree_mappings = get(g:, 'vimtree_mappings',
         \ {
         \   '?':  { 'cmd': 'tree#help()',     'desc': 'show help'    },
@@ -28,8 +29,8 @@ let g:vimtree_mappings = get(g:, 'vimtree_mappings',
         \   'R':  { 'cmd': 'tree#refresh()',  'desc': 'refresh'      },
         \   '}':  { 'cmd': 'tree#next()',     'desc': 'next fold'    },
         \   '{':  { 'cmd': 'tree#prev()',     'desc': 'prev fold'    },
-        \   '*':  { 'cmd': 'tree#grep()',     'desc': 'grep'         },
-        \   'f':  { 'cmd': 'tree#filter()',   'desc': 'filter'       },
+        \   'f':  { 'cmd': 'tree#grep()',     'desc': 'grep'         },
+        \   '*':  { 'cmd': 'tree#glob()',     'desc': 'glob'       },
         \   'zh': { 'cmd': 'tree#hidden()',   'desc': 'toggle hidden'}
         \ })
 
@@ -65,7 +66,7 @@ let g:vimtree_handledirs = get(g:, 'vimtree_handledirs',  1)
 " @section Commands, commands
 
 ""
-" Opens up vim-tree in [directory]
+" Opens up vim-tree in [directory] in the current window
 " @default directory=`getcwd()`
 command -complete=dir -nargs=? Tree call tree#open(<f-args>)
 
@@ -75,10 +76,25 @@ command -complete=dir -nargs=? Tree call tree#open(<f-args>)
 command -complete=dir -nargs=? VTree vsp | call tree#open(<f-args>)
 
 ""
-" Opens up vim-tree in a git project's root directory.
+" Opens up vim-tree in a git project's root directory. Uses current window.
 " The tree opens expanded and unfolded
 " @default directory=`getcwd()`
 command GTree call tree#open_root()
+
+""
+" Opens up vim-tree in a git project's root directory. Uses vertical split.
+" The tree opens expanded and unfolded
+" @default directory=`getcwd()`
+command VGTree vsp | call tree#open_root()
+
+""
+" Opens up vim-tree as a sidebar panel to the left. Tries to open from a git 
+" repository root. If it fails, opens up the current file's directory as root.
+" Opening calling <edit> from the sidebar, the window to the right is will
+" be replaced. You can implement this function yourself to add the desired
+" behavior.
+" @default directory=`getcwd()`
+command NTree call tree#open_sidebar()
 
 if g:vimtree_handledirs
   augroup vimtree_handledirs

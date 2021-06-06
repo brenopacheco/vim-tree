@@ -2,14 +2,20 @@
 " Author: brenopacheco
 " Description: wrapper for tree command
 " Last Modified: 2020-11-02
+scriptencoding
 
 ""
 " @section Introduction, intro
 " This is a very basic "tree" command wrapper, with similar functionality
 " to Netrw. By calling @command(Tree) the results of the tree
-" command show in the buffer, from where you can expand/collapse
-" the tree, go down into a specific directory or open/create/rename
-" a file. Some mappings are probided by default.
+" command is shown in the buffer. From there, you can expand/collapse
+" the tree, go down into a specific directory or open/create/rename/delete
+" a file or directory. You can grep for entries, toggle show hidden files.
+" You can open the tree in the current buffer or in a split, in the current
+" file's directory, in a specific directory or in the root directory of a git
+" project. A command for opening tree as drawer is also given.
+"
+" Some mappings are probided by default.
 
 " ==============================================================================
 " Variables
@@ -20,10 +26,12 @@ let s:dir      = ''
 let s:level    = 1
 let s:cmd      = 'tree'
 let s:options = '-F --dirsfirst'
-let s:bufname =  "___vimtree___"
+let s:bufname =  '___vimtree___'
 let s:hidden  = 1
 let s:cd      = 1
-let s:oldbuf  = 0
+let s:oldbufs = {}
+let s:mappings = {}
+let s:bufcount = 0
 
 " ==============================================================================
 " API
@@ -38,11 +46,10 @@ let s:oldbuf  = 0
 " If second argument is given, use it as start expand level
 " @default dir=`getcwd()`
 function! tree#open(...) abort
-    let s:oldbuf = bufnr()
     if a:0 > 0
         if !isdirectory(a:1)
             echohl WarningMsg | echo 'Invalid directory.' | echohl NONE
-            return
+            return v:false
         endif
         let dirpath = system('realpath ' . a:1)
         let s:dir = substitute(dirpath, '\n', '', 'g')
@@ -54,12 +61,17 @@ function! tree#open(...) abort
     endif
     if !&hidden && &modified
         echohl WarningMsg | echo 'There are unsaved changes.' | echohl NONE
-        return
+        return v:false
     endif
     let s:hidden = !g:vimtree_hidden
     if isdirectory(s:dir)
-        call s:open()
+        call s:open(v:false)
     endif
+    silent let goto_line = tree#locate(expand('#'.bufnr('#').':p'))
+    if goto_line ==# v:false
+        call setpos('.', [0, goto_line, 1, 0])
+    endif
+    return v:true
 endfunction
 
 
@@ -70,20 +82,40 @@ function! tree#open_root() abort
     let root_dir = system('git rev-parse --show-toplevel 2>/dev/null')
     if v:shell_error != 0
         echohl WarningMsg | echo 'Not a git repository.' | echohl NONE
-        return
+        return v:false
     endif
     let root_dir = substitute(root_dir, '\n', '', '')
     let depth = str2nr(system('fd . -t d ' . root_dir 
         \ . ' | sed "s#' . root_dir . '/##"'
         \ . ' | awk -F"/" "NF > max {max = NF} END {print max}"'))
-    call tree#open(root_dir, depth+1)
+    return tree#open(root_dir, depth+1)
 endfunction
 
 ""
 " @public
-" Closes vim-tree
+" Opens tree as sidebar pane.
+fun! tree#open_sidebar() abort
+    leftabove 30vsp
+    setlocal winfixheight winfixwidth
+    silent let open = tree#open_root() || tree#open()
+    if !open
+        close
+        return v:false
+    endif
+    let mappings = deepcopy(g:vimtree_mappings)
+    let mappings['e']['cmd'] = 'tree#editright()'
+    call tree#reset_keys(mappings)
+    augroup vimtree_sidebar
+        au!
+        au WinLeave <buffer> vertical resize 30
+    augroup end
+endf
+
+""
+" @public
+" Closes vim-tree. Can only be called when inside a _vimtree_ buffer.
 function! tree#close() abort
-    call s:close()
+    call s:close(bufnr())
 endfunction
 
 ""
@@ -93,8 +125,8 @@ function! tree#up() abort
     let s:dir = system('dirname ' . s:dir)
     let s:dir = substitute(s:dir, '\n', '', 'g')
     " let s:level = 1
-    call s:reopen()
-    echo "Tree level: " . s:level
+    call tree#refresh()
+    echo 'Tree level: ' . s:level
 endfunction
 
 ""
@@ -102,8 +134,8 @@ endfunction
 " Go down into directory under cursor.
 function! tree#down() abort
     let  s:dir = s:pathdir()
-    call s:reopen()
-    echo "Tree level: " . s:level
+    call tree#refresh()
+    echo 'Tree level: ' . s:level
 endfunction
 
 ""
@@ -111,8 +143,8 @@ endfunction
 " Expand tree, increasing -L level in tree command.
 function! tree#expand() abort
     let s:level = s:level + 1
-    call s:reopen()
-    echo "Tree level: " . s:level
+    call tree#refresh()
+    echo 'Tree level: ' . s:level
 endfunction
 
 ""
@@ -120,8 +152,8 @@ endfunction
 " collapse tree, decreasing -L level in tree command.
 function! tree#collapse() abort
     let s:level = s:level > 1 ? s:level - 1 : 1
-    call s:reopen()
-    echo "Tree level: " . s:level
+    call tree#refresh()
+    echo 'Tree level: ' . s:level
 endfunction
 
 ""
@@ -129,7 +161,18 @@ endfunction
 " Edit file under cursor, closing vim-tree.
 function! tree#edit() abort
     exec 'e ' . tree#path()
-    " call s:close()
+endfunction
+
+""
+" @public
+" Edit file under cursor by replacing the window to the right with it.
+function! tree#editright() abort
+    let path = tree#path()
+    exe "norm! \<c-w>w"
+    if s:is_tree()
+        vsp
+    endif
+    exec 'e ' . path
 endfunction
 
 ""
@@ -163,7 +206,7 @@ function! tree#touch() abort
     let dir = s:pathdir() . '/'
     let fn = input('Filename: ' . dir)
     call system('touch ' . dir . fn)
-    call s:reopen()
+    call tree#refresh()
 endfunction
 
 ""
@@ -173,7 +216,7 @@ function! tree#mkdir() abort
     let dir = s:pathdir() . '/'
     let fn = input('Dirname: ' . dir)
     call system('mkdir ' . dir . fn)
-    call s:reopen()
+    call tree#refresh()
 endfunction
 
 ""
@@ -185,7 +228,7 @@ function! tree#rename() abort
     let prompt = 'Rename: ' . path . ' -> '
     let fn = input({'prompt': prompt, 'default': path})
     call system('mv ' . path . ' ' . fn)
-    call s:reopen()
+    call tree#refresh()
 endfunction
 
 ""
@@ -197,13 +240,13 @@ function! tree#delete() abort
     let prompt = 'Remove ' . (isdirectory(path) ? 'directory ' : 'file ' ) 
         \ . path. ' (y/n)?: '
     let fn = input({'prompt': prompt, 'completion': 'custom,tree#yes_no'})
-    if fn == 'yes' || fn == 'y'
-        echo " -> removing " . path
+    if fn ==? 'yes' || fn ==? 'y'
+        echo ' -> removing ' . path
         echo system('rm -r ' . path)
     else
         echo ' -> cancelled.'
     endif
-    call s:reopen()
+    call tree#refresh()
 endfunction
 
 function tree#yes_no(A,L,P)
@@ -212,31 +255,35 @@ endfunction
 
 ""
 " @public
-" Reopen tree
+" Refresh tree contents. Can only be used inside a _vimtree_ buffer.
 function! tree#refresh() abort
-    call s:reopen()
+    if !s:is_tree()
+        echohl WarningMsg | echomsg 'Not a vimtree buffer' | echohl NONE
+        return v:false
+    endif
+    call s:reopen(bufnr())
 endfunction
 
 ""
 " @public
 " Jump to next fold
 function! tree#next() abort
-    norm zj
+    norm! zj
 endfunction
 
 ""
 " @public
 " Jump to previous fold
 function! tree#prev() abort
-    norm kzkj
+    norm! kzkj
 endfunction
 
 ""
 " @public
-" Grep pattern and populate quickfix
+" Apply vimgrep to the tree.
 function! tree#grep() abort
     call setqflist([])
-    exec 'g/' . input("vimgrep /") . 
+    exec 'g/' . input('vimgrep /') . 
         \'/caddexpr expand("%") . ":" . line(".") . ":" . tree#path()'
     copen
     set conceallevel=2 concealcursor=nc
@@ -254,22 +301,24 @@ endfunction
 
 ""
 " @public
-" Apply filter on tree. Uses glob. Tree doesn't provide regex option
-function! tree#filter() abort
-    let pattern = input("glob/")
+" Apply a filter on tree. Uses glob pattern. Tree doesn't provide regex option
+function! tree#glob() abort
+    let pattern = input('glob/')
     let old_opts = s:options
     let s:options = s:options . ' --matchdirs --prune -P "' . pattern . '"'
-    call s:reopen()
+    call tree#refresh()
     let s:options = old_opts
 endfunction
 
 
 ""
 " @public
-" Shows help for mappings based on g:vimtree_mappings
+" Shows help for mappings based on vimtree mappings
 function! tree#help() abort
-    for key in keys(g:vimtree_mappings)
-        echo ' ' . key . "\t" . g:vimtree_mappings[key].desc
+    for key in keys(s:mappings)
+        let desc = s:mappings[key].desc
+        let cmd = s:mappings[key].cmd
+        echo printf('%-8s%-20s%30s', key, desc, cmd)
     endfor
 endfunction
 
@@ -287,7 +336,7 @@ function! tree#path(...) abort
     while line > 1
         let c = match(getline(line), ' \zs[^ │─├└]')
         if c < col
-            let part = matchstr(getline(line)[c:], '.*')
+            let part = matchstr(getline(line)[c :], '.*')
             " Handle symlinks.
             let part = substitute(part, ' ->.*', '', '')
             let path = escape(part, '"') . path
@@ -312,14 +361,7 @@ endfunction
 " Toggle showing hidden files
 function! tree#hidden() abort
     let s:hidden = !s:hidden
-    call s:reopen()
-endfunction
-
-""
-" @public
-" Reopen tree. Used for custom commands
-function! tree#reopen() abort
-    call s:reopen()
+    call tree#refresh()
 endfunction
 
 ""
@@ -327,48 +369,39 @@ endfunction
 " Return the line number in the current _vimtree_ buffer for a given path
 " [optional] file path
 fun! tree#locate(path)
-    let b:old_pos = getpos('.')
-    call setpos('.', [0, 1, 1, 0])
+    let old_pos = getpos('.')
     try
+        call setpos('.', [0, 1, 1, 0])
         if bufname() !=# s:bufname
             throw 'Not a tree buffer.'
         endif
-        let b:base_path = getline(1)
-        let b:rel_path = substitute(a:path, '^' . b:base_path . '/', '', '')
-        let b:leafs = split(b:rel_path, '\/')
-        let b:level = 0
-        let b:lnum = 1
-        echomsg 'leafs: ' . string(b:leafs)
-        for leaf in b:leafs
-            echomsg 'leaf: ' . leaf
-            echomsg 'b:level:' . b:level
-            echomsg 'b:lnum:' . b:lnum
+        let base_path = getline(1)
+        let rel_path = substitute(a:path, '^' . base_path . '/', '', '')
+        let leafs = split(rel_path, '\/')
+        let level = 0
+        let lnum = 1
+        for leaf in leafs
             while v:true
-                let b:lnum = search(leaf)
-                echomsg '> b:lnum:' . b:lnum
-                if b:lnum == 0
+                let lnum = search(leaf)
+                if lnum == 0
                     throw 'Path not found.'
                 endif
-                let b:cur_level = s:foldwidth(b:lnum)
-                echomsg 'b:cur_level: ' . b:cur_level
-                if b:cur_level ==# b:level
-                    echomsg 'breaking'
+                let cur_level = s:foldwidth(lnum)
+                if cur_level ==# level
                     break
                 endif
-                echomsg 'looping'
             endwhile
-            echomsg 'found in line: ' . line('.')
-            let b:level = b:level + 1
+            let level = level + 1
         endfor
-        if tree#path(b:lnum) !=# a:path
+        if tree#path(lnum) !=# a:path
             throw 'Path does not match.'
         endif
-        return b:lnum
+        return lnum
     catch /.*/
+        call setpos('.', old_pos)
         echohl WarningMsg | echomsg v:exception | echohl NONE
-        return
+        return v:false
     endtry
-    call setpos('.', b:old_pos)
 endf
 
 ""
@@ -382,11 +415,11 @@ function! tree#foldlevel(lnum)
     let w1 = s:foldwidth(a:lnum+1)
     let diff = w1 - w0
     if diff > 0
-        return "a" . diff
+        return 'a' . diff
     elseif diff < 0
-        return "s" . -diff
+        return 's' . -diff
     else 
-        return "="
+        return '='
     endif
 endfunction
 
@@ -413,41 +446,64 @@ endfunction
 
 ""
 " @private
-" Creates the _vimtree_ buffer
-function! s:open() abort
-    call bufadd(s:bufname)
-    exec 'noautocmd e ' . s:bufname
+" Creates a new _vimtree_ buffer
+function! s:open(bufnr) abort
+    let bufname = ''
+    if a:bufnr
+        let bufname = bufname(a:bufnr)
+    else
+        let bufname = s:new_buffer_name()
+        echomsg bufname
+        let s:oldbufs[bufname] = bufnr()
+        call bufadd(bufname)
+    endif
+    exec 'noautocmd e ' . bufname
     setlocal modifiable
+    1,$d
     call append(0, s:results())
     call setpos('.', [0, s:line, s:col, 0])
-    for key in keys(g:vimtree_mappings)
-        exec 'noremap <silent><buffer><nowait> ' 
-            \ . key . ' :call ' . g:vimtree_mappings[key].cmd . '<CR>'
-    endfor
+    if !s:is_tree()
+        call tree#reset_keys(g:vimtree_mappings)
+    endif
     set ft=vimtree
     setlocal nomodifiable 
+    let b:vimtree = v:true
 endfunction
+
+fun! tree#reset_keys(mappings)
+    for key in keys(s:mappings)
+        silent! exec 'nunmap <buffer> ' . key
+    endfor
+    let s:mappings = a:mappings
+    for key in keys(s:mappings)
+        exec 'noremap <silent><buffer><nowait> ' 
+            \ . key . ' :call ' . s:mappings[key].cmd . '<CR>'
+    endfor
+endf
 
 ""
 " @private
 " Closes _vimtree_ buffer. Try to restore the last buffer into window.
 " Avoids closing last window in the tab.
-function! s:close() abort
-    if bufexists(bufname(s:oldbuf))
-        silent exec s:oldbuf . 'b'
-    elseif bufname() == s:bufname
+function! s:close(bufnr) abort
+    let oldbuf = s:oldbufs[bufname(a:bufnr)]
+    if bufexists(oldbuf)
+        exec oldbuf . 'b'
+    elseif len(tabpagebuflist()) == 1
         enew
+    else
+        close
     endif
-    silent! exec 'bw! ' . s:bufname
 endfunction
 
 ""
 " @private
-function! s:reopen() abort
+" Reopens a vimtree buffer. Must be given the number of the buffer.
+function! s:reopen(bufnr) abort
     let pos = getpos('.')
     let s:line = pos[1]
     let s:col = pos[2]
-    call s:open()
+    call s:open(a:bufnr)
 endfunction
 
 ""
@@ -490,6 +546,21 @@ function! s:results()
     endif
     return systemlist(cmd)
 endfunction
+
+""
+" @private
+" Generates an unique hash
+fun! s:new_buffer_name()
+    let s:bufcount = s:bufcount + 1
+    return s:bufname . s:bufcount
+endf
+
+""
+" @private
+" Returns v:true if current buffer is a _vimtree_buffer
+fun! s:is_tree()
+    return exists('b:vimtree')
+endf
 
 augroup vimtree
     au!
