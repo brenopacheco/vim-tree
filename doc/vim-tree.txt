@@ -33,7 +33,7 @@ Mappings inside the vim-tree buffer.
         \   '-':  { 'cmd': 'tree#collapse()', 'desc': 'collapse'     },
         \   'h':  { 'cmd': 'tree#up()',       'desc': 'go up'        },
         \   'l':  { 'cmd': 'tree#down()',     'desc': 'go down'      },
-        \   'q':  { 'cmd': 'tree#close()',    'desc': 'close'        },
+        \   'q':  { 'cmd': 'tree#close(1)',   'desc': 'close'        },
         \   'e':  { 'cmd': 'tree#edit()',     'desc': 'edit'         },
         \   'v':  { 'cmd': 'tree#vsplit()',   'desc': 'vsplit'       },
         \   's':  { 'cmd': 'tree#split()',    'desc': 'split'        },
