@@ -324,6 +324,55 @@ endfunction
 
 ""
 " @public
+" Return the line number in the current _vimtree_ buffer for a given path
+" [optional] file path
+fun! tree#locate(path)
+    let b:old_pos = getpos('.')
+    call setpos('.', [0, 1, 1, 0])
+    try
+        if bufname() !=# s:bufname
+            throw 'Not a tree buffer.'
+        endif
+        let b:base_path = getline(1)
+        let b:rel_path = substitute(a:path, '^' . b:base_path . '/', '', '')
+        let b:leafs = split(b:rel_path, '\/')
+        let b:level = 0
+        let b:lnum = 1
+        echomsg 'leafs: ' . string(b:leafs)
+        for leaf in b:leafs
+            echomsg 'leaf: ' . leaf
+            echomsg 'b:level:' . b:level
+            echomsg 'b:lnum:' . b:lnum
+            while v:true
+                let b:lnum = search(leaf)
+                echomsg '> b:lnum:' . b:lnum
+                if b:lnum == 0
+                    throw 'Path not found.'
+                endif
+                let b:cur_level = s:foldwidth(b:lnum)
+                echomsg 'b:cur_level: ' . b:cur_level
+                if b:cur_level ==# b:level
+                    echomsg 'breaking'
+                    break
+                endif
+                echomsg 'looping'
+            endwhile
+            echomsg 'found in line: ' . line('.')
+            let b:level = b:level + 1
+        endfor
+        if tree#path(b:lnum) !=# a:path
+            throw 'Path does not match.'
+        endif
+        return b:lnum
+    catch /.*/
+        echohl WarningMsg | echomsg v:exception | echohl NONE
+        return
+    endtry
+    call setpos('.', b:old_pos)
+endf
+
+""
+" @public
 " Function used for defining fold level with `fold-expr`
 function! tree#foldlevel(lnum)
     if a:lnum == 1
@@ -364,7 +413,7 @@ endfunction
 
 ""
 " @private
-" Creates the ___vimtree___ buffer
+" Creates the _vimtree_ buffer
 function! s:open() abort
     call bufadd(s:bufname)
     exec 'noautocmd e ' . s:bufname
@@ -381,15 +430,15 @@ endfunction
 
 ""
 " @private
-" Closes ___vimtree___ buffer. Try to restore the last buffer into window.
+" Closes _vimtree_ buffer. Try to restore the last buffer into window.
 " Avoids closing last window in the tab.
 function! s:close() abort
     if bufexists(bufname(s:oldbuf))
         silent exec s:oldbuf . 'b'
-    elseif bufname() == '___vimtree___'
+    elseif bufname() == s:bufname
         enew
     endif
-    silent! bw! ___vimtree___
+    silent! exec 'bw! ' . s:bufname
 endfunction
 
 ""
