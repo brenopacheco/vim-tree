@@ -67,7 +67,8 @@ function! tree#open(...) abort
     if isdirectory(s:dir)
         call s:open(v:false)
     endif
-    silent let goto_line = tree#locate(expand('#'.bufnr('#').':p'))
+    let path = expand('#'.bufnr('#').':p')
+    silent let goto_line = tree#locate(path)
     if goto_line ==# v:false
         call setpos('.', [0, goto_line, 1, 0])
     endif
@@ -372,7 +373,7 @@ fun! tree#locate(path)
     let old_pos = getpos('.')
     try
         call setpos('.', [0, 1, 1, 0])
-        if bufname() !=# s:bufname
+        if !s:is_tree()
             throw 'Not a tree buffer.'
         endif
         let base_path = getline(1)
@@ -453,7 +454,6 @@ function! s:open(bufnr) abort
         let bufname = bufname(a:bufnr)
     else
         let bufname = s:new_buffer_name()
-        echomsg bufname
         let s:oldbufs[bufname] = bufnr()
         call bufadd(bufname)
     endif
