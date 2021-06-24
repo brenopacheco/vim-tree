@@ -567,7 +567,7 @@ augroup vimtree
     au Filetype vimtree set foldmethod=expr
     au Filetype vimtree set foldexpr=tree#foldlevel(v:lnum)
     au Filetype vimtree set foldtext=tree#foldtext()
-    au Filetype vimtree setlocal fillchars=fold:\
+    au Filetype vimtree setlocal fillchars=fold:\ 
     au Filetype vimtree setlocal bufhidden=wipe nowrap
         \ nobuflisted buftype=nofile noswapfile
     au BufEnter vimtree set nolist
